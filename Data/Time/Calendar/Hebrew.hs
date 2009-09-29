@@ -32,11 +32,14 @@ import Test.Framework.Providers.QuickCheck (testProperty)
 import Test.HUnit hiding (Test)
 import Test.QuickCheck
 
+import Data.Object
+import Data.ByteString.Class
+
 ------ data definitions
 data Month = Tishrei | Cheshvan | Kislev | Tevet | Shevat
            | Adar | Adar1 | Adar2
            | Nissan | Iyar | Sivan | Tammuz | Av | Elul
-    deriving (Eq, Ord, Show, Enum)
+    deriving (Eq, Ord, Show, Enum, Read)
 data YearType = Chaser | Ksidran | Shlema
     deriving (Eq, Ord, Show, Enum)
 data YearLeap = Leap | NonLeap
@@ -433,3 +436,20 @@ instance Arbitrary HebrewDate where
         y <- (+ 1) . (`mod` 6000) <$> arbitrary
         day <- (+ 1) . (`mod` 29) <$> arbitrary
         return $! HebrewDate y m day
+
+----- Data.Object instances
+instance ToScalar Month where
+    toScalar = toScalar . show
+instance ToObject Month where
+    toObject = toObject . toScalar
+readM :: (Read r, Monad m) => String -> m r
+readM s = case reads s of
+            ((x, _):_) -> return x
+            _ -> fail $ "Unable to read: " ++ s
+instance FromScalar Month where
+    fromScalar bs =
+      case readM $ fromLazyByteString bs of
+          Just x -> return x
+          Nothing -> fail $ "Invalid hebrew month: " ++ fromLazyByteString bs
+instance FromObject Month where
+    fromObject o = fromObject o >>= fromScalar

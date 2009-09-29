@@ -19,6 +19,8 @@ library
                      test-framework-quickcheck,
                      test-framework-hunit,
                      HUnit,
-                     QuickCheck == 1.*
+                     QuickCheck == 1.*,
+                     bytestring-class,
+                     data-object >= 0.0.2
     exposed-modules: Data.Time.Calendar.Hebrew
     ghc-options:     -Wall
