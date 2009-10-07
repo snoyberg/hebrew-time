@@ -328,7 +328,9 @@ data HebrewDate = HebrewDate
     , month :: Month
     , date :: Int
     }
-    deriving (Eq, Show)
+    deriving Eq
+instance Show HebrewDate where
+    show (HebrewDate y m d) = show d ++ " " ++ show m ++ ", " ++ show y
 
 epochOffset :: Integral i => i
 epochOffset = 2052004
