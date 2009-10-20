@@ -1,5 +1,5 @@
 name:            hebrew-time
-version:         0.0.0
+version:         0.0.1
 license:         BSD3
 license-file:    LICENSE
 author:          Michael Snoyman <michael@snoyman.com>
@@ -21,6 +21,6 @@ library
                      HUnit,
                      QuickCheck >= 1 && < 2,
                      bytestring-class,
-                     data-object >= 0.0.2
+                     data-object >= 0.2.0
     exposed-modules: Data.Time.Calendar.Hebrew
     ghc-options:     -Wall

@@ -1,4 +1,5 @@
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
+{-# LANGUAGE MultiParamTypeClasses #-}
 ---------------------------------------------------------
 --
 -- Module        : Data.Time.Calendar.Hebrew
@@ -17,12 +18,16 @@ module Data.Time.Calendar.Hebrew
     , Month (..)
     , fromHebrew
     , toHebrew
+      -- * Anniversaries
+    , anniversaryInYear
+    , nextAnniversary
       -- * Testing
     , testSuite
     ) where
 
 import Control.Applicative ((<$>))
 import Control.Arrow
+import Control.Monad
 import Data.Time.Calendar (Day (..), fromGregorian)
 import Data.Time.Calendar.WeekDate (toWeekDate)
 
@@ -33,6 +38,8 @@ import Test.HUnit hiding (Test)
 import Test.QuickCheck
 
 import Data.Object
+import Data.Object.Raw
+import Data.Object.Translate
 import Data.ByteString.Class
 
 ------ data definitions
@@ -44,6 +51,25 @@ data YearType = Chaser | Ksidran | Shlema
     deriving (Eq, Ord, Show, Enum)
 data YearLeap = Leap | NonLeap
     deriving (Eq, Ord, Show, Enum)
+
+instance CanTranslate Month where
+    tryTranslate x "en" = Just $ show x
+    tryTranslate Tishrei "he" = Just "תשרי"
+    tryTranslate Cheshvan "he" = Just "חשון"
+    tryTranslate Kislev "he" = Just "כסלו"
+    tryTranslate Tevet "he" = Just "טבת"
+    tryTranslate Shevat "he" = Just "שבט"
+    tryTranslate Adar "he" = Just "אדר"
+    tryTranslate Adar1 "he" = Just "אדר א"
+    tryTranslate Adar2 "he" = Just "אדר ב"
+    tryTranslate Nissan "he" = Just "ניסן"
+    tryTranslate Iyar "he" = Just "אייר"
+    tryTranslate Sivan "he" = Just "סיון"
+    tryTranslate Tammuz "he" = Just "תמוז"
+    tryTranslate Av "he" = Just "אב"
+    tryTranslate Elul "he" = Just "אלול"
+
+    defaultTranslate = show
 
 ------ newtypes
 newtype Chalakim = Chalakim Integer
@@ -386,6 +412,61 @@ case_spotChecks = do
     fromGregorian 1985 1 12 @=? fromHebrew (HebrewDate 5745 Tevet 19)
     fromGregorian 1986 9 8 @=? fromHebrew (HebrewDate 5746 Elul 4)
 
+clip :: HebrewDate -> HebrewDate
+clip (HebrewDate y m d) =
+    let y' = Years $ fromIntegral y
+        (yl, yt) = yearDef (roshHashana y') (roshHashana $ y' + 1)
+        m' = adjustMonth yl m
+        ml = fromIntegral $ monthLength yl yt m'
+        d' = if d > ml then ml else d
+     in HebrewDate y m' d'
+
+adjustMonth :: YearLeap -> Month -> Month
+adjustMonth Leap Adar = Adar2
+adjustMonth Leap x = x
+adjustMonth NonLeap Adar1 = Adar
+adjustMonth NonLeap Adar2 = Adar
+adjustMonth NonLeap x = x
+
+anniversaryInYear :: Int -- ^ year
+                  -> HebrewDate
+                  -> HebrewDate
+anniversaryInYear y (HebrewDate _ m d) = clip $ HebrewDate y m d
+
+caseAnniversaryInYear :: IO ()
+caseAnniversaryInYear = do
+    -- Year 5770 is just the current year at time of writing
+    -- Year 3 is a chaser leap year
+    -- Year 4 is a leap year
+    HebrewDate 5770 Tishrei 1 @=?
+        anniversaryInYear 5770 (HebrewDate 1 Tishrei 1)
+    HebrewDate 3 Cheshvan 29 @=?
+        anniversaryInYear 3 (HebrewDate 1 Cheshvan 30)
+    HebrewDate 3 Kislev 29 @=?
+        anniversaryInYear 3 (HebrewDate 1 Kislev 30)
+    HebrewDate 3 Adar2 1 @=?
+        anniversaryInYear 3 (HebrewDate 1 Adar 1)
+    HebrewDate 4 Adar 1 @=?
+        anniversaryInYear 4 (HebrewDate 1 Adar1 1)
+    HebrewDate 4 Adar 1 @=?
+        anniversaryInYear 4 (HebrewDate 1 Adar2 1)
+    HebrewDate 4 Adar 29 @=?
+        anniversaryInYear 4 (HebrewDate 1 Adar1 30)
+
+nextAnniversary :: HebrewDate -- ^ so to say current date
+                -> HebrewDate -- ^ date of event
+                -> HebrewDate -- ^ first anniversary of event after current
+nextAnniversary (HebrewDate cy cm cd) hd@(HebrewDate y m d)
+    | cm > m || cm == m && cd > d = anniversaryInYear (cy + 1) hd
+    | otherwise = anniversaryInYear cy hd
+
+caseNextAnniversary :: IO ()
+caseNextAnniversary = do
+    HebrewDate 5770 Tishrei 2 @=?
+        nextAnniversary (HebrewDate 5770 Tishrei 1) (HebrewDate 1 Tishrei 2)
+    HebrewDate 5771 Tishrei 2 @=?
+        nextAnniversary (HebrewDate 5770 Tishrei 3) (HebrewDate 1 Tishrei 2)
+
 ------ testing
 testSuite :: Test
 testSuite = testGroup "Data.Time.Calendar.Hebrew"
@@ -403,6 +484,8 @@ testSuite = testGroup "Data.Time.Calendar.Hebrew"
     , testProperty "greg/hebrew same weekday" prop_sameWeekday
     , testCase "integral date spot check" case_integralSpotCheck
     , testCase "individual date spot checks" case_spotChecks
+    , testCase "caseAnniversaryInYear" caseAnniversaryInYear
+    , testCase "caseNextAnniversary" caseNextAnniversary
     ]
 
 instance Arbitrary Chalakim where
@@ -439,19 +522,19 @@ instance Arbitrary HebrewDate where
         day <- (+ 1) . (`mod` 29) <$> arbitrary
         return $! HebrewDate y m day
 
------ Data.Object instances
-instance ToScalar Month where
+----- Data.Object.Raw instances
+instance ToScalar Month Raw where
     toScalar = toScalar . show
-instance ToObject Month where
-    toObject = toObject . toScalar
+instance ToObject Month Raw Raw where
+    toObject = Scalar . toScalar
 readM :: (Read r, Monad m) => String -> m r
 readM s = case reads s of
             ((x, _):_) -> return x
             _ -> fail $ "Unable to read: " ++ s
-instance FromScalar Month where
-    fromScalar bs =
+instance FromScalar Month Raw where
+    fromScalar (Raw bs) =
       case readM $ fromLazyByteString bs of
           Just x -> return x
-          Nothing -> fail $ "Invalid hebrew month: " ++ fromLazyByteString bs
-instance FromObject Month where
-    fromObject o = fromObject o >>= fromScalar
+          Nothing -> fail $ "Invalid hebrew month: " ++ fromLazyByteString bs -- FIXME don't use fail
+instance FromObject Month Raw Raw where
+    fromObject = fromScalar <=< getScalar
