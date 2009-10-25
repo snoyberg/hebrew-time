@@ -21,6 +21,7 @@ library
                      HUnit,
                      QuickCheck >= 1 && < 2,
                      bytestring-class,
-                     data-object >= 0.2.0
+                     data-object >= 0.2.0,
+                     data-object-translate
     exposed-modules: Data.Time.Calendar.Hebrew
     ghc-options:     -Wall
