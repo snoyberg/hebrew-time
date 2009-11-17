@@ -1,5 +1,7 @@
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE CPP #-}
+{-# LANGUAGE OverloadedStrings #-}
 ---------------------------------------------------------
 --
 -- Module        : Data.Time.Calendar.Hebrew
@@ -21,8 +23,10 @@ module Data.Time.Calendar.Hebrew
       -- * Anniversaries
     , anniversaryInYear
     , nextAnniversary
+#if TEST
       -- * Testing
     , testSuite
+#endif
     ) where
 
 import Control.Applicative ((<$>))
@@ -30,17 +34,19 @@ import Control.Arrow
 import Control.Monad
 import Data.Time.Calendar (Day (..), fromGregorian)
 import Data.Time.Calendar.WeekDate (toWeekDate)
+import Data.Convertible
 
+import Data.Object
+import Data.Object.Text
+import Data.Object.Translate
+
+#if TEST
 import Test.Framework (testGroup, Test)
 import Test.Framework.Providers.HUnit
 import Test.Framework.Providers.QuickCheck (testProperty)
 import Test.HUnit hiding (Test)
 import Test.QuickCheck
-
-import Data.Object
-import Data.Object.Raw
-import Data.Object.Translate
-import Data.ByteString.Class
+#endif
 
 ------ data definitions
 data Month = Tishrei | Cheshvan | Kislev | Tevet | Shevat
@@ -53,7 +59,7 @@ data YearLeap = Leap | NonLeap
     deriving (Eq, Ord, Show, Enum)
 
 instance CanTranslate Month where
-    tryTranslate x "en" = Just $ show x
+    tryTranslate x "en" = Just $ convertSuccess $ show x
     tryTranslate Tishrei "he" = Just "תשרי"
     tryTranslate Cheshvan "he" = Just "חשון"
     tryTranslate Kislev "he" = Just "כסלו"
@@ -69,7 +75,7 @@ instance CanTranslate Month where
     tryTranslate Av "he" = Just "אב"
     tryTranslate Elul "he" = Just "אלול"
 
-    defaultTranslate = show
+    defaultTranslate = convertSuccess . show
 
 ------ newtypes
 newtype Chalakim = Chalakim Integer
@@ -129,20 +135,24 @@ splitChalakim tc =
         (w, d) = weeksFromDays d'
      in (w, d, s, c)
 
+#if TEST
 case_splitChalakim :: Assertion
 case_splitChalakim = do
     splitChalakim 1080 @=? (0, 0, 1, 0)
     splitChalakim (15 * 24 * 1080) @=? (2, 1, 0, 0)
+#endif
 
 joinChalakim :: Weeks -> Days -> Shaot -> Chalakim -> TotalChalakim
 joinChalakim w d s c =
     chalakimFromShaot (shaotFromDays (daysFromWeeks w + d) + s) + c
 
+#if TEST
 prop_joinSplitChalakim :: TotalChalakim -> Bool
 prop_joinSplitChalakim tc = tc == uncurry4 joinChalakim (splitChalakim tc)
     where
         uncurry4 :: (a -> b -> c -> d -> e) -> (a, b, c, d) -> e
         uncurry4 f (a, b, c, d) = f a b c d
+#endif
 
 ------ year dependent constants
 isLeapYear :: Years -> YearLeap
@@ -193,6 +203,7 @@ monthsTilTishreiLong (Years y') =
         extra = extraMonthCount $ Years y
      in base + extra
 
+#if TEST
 case_monthsTilTishrei :: Assertion
 case_monthsTilTishrei = do
     0 @=? monthsTilTishrei 1
@@ -203,6 +214,7 @@ case_monthsTilTishrei = do
 
 prop_monthsTilTishrei :: Years -> Bool
 prop_monthsTilTishrei y = monthsTilTishrei y == monthsTilTishreiLong y
+#endif
 
 firstTishrei :: TotalChalakim
 firstTishrei = joinChalakim 0 1 5 204
@@ -210,6 +222,7 @@ firstTishrei = joinChalakim 0 1 5 204
 moladTishrei :: Years -> TotalChalakim
 moladTishrei y = chalakimFromMonths (monthsTilTishrei y) + firstTishrei
 
+#if TEST
 case_moladTishrei :: Assertion
 case_moladTishrei = do
     let testMolad w x y z = do
@@ -230,6 +243,7 @@ case_moladTishrei = do
     testMolad 18 0 15 414
     testMolad 19 5 0 210
     testMolad 20 3 21 799
+#endif
 
 monthLength :: YearLeap -> YearType -> Month -> Days
 monthLength _ _ Tishrei = 30
@@ -272,9 +286,11 @@ dateFromJulian yl yt j' =
             | otherwise = helper (succ m) (j - ml m)
      in helper Tishrei j'
 
+#if TEST
 prop_dateToFromJulian :: YearLeap -> YearType -> Julian -> Bool
 prop_dateToFromJulian yl yt j =
     j == uncurry (julianFromDate yl yt) (dateFromJulian yl yt j)
+#endif
 
 ------ determining year stuff
 roshHashana :: Years -> TotalDays
@@ -303,24 +319,30 @@ roshHashana y = daysFromWeeks w + d + dechiyot
                s == 15 && c > 589) = 2
             | otherwise = 0
 
+#if TEST
 case_firstRoshHashana :: Assertion
 case_firstRoshHashana = roshHashana 1 @?= 1
+#endif
 
 dayOfWeek :: TotalDays -> Weekday
 dayOfWeek t =
     let (_, w) = weeksFromDays t
      in w
 
+#if TEST
 prop_validRoshHashanaDay :: Years -> Bool
 prop_validRoshHashanaDay = (`elem` [1, 2, 4, 6]) . dayOfWeek . roshHashana
+#endif
 
 yearLength :: Years -> TotalDays
 yearLength y = roshHashana (y + 1) - roshHashana y
 
+#if TEST
 prop_yearLength :: Years -> Bool
 prop_yearLength y =
     let l = yearLength y
      in l `elem` [353, 354, 355, 383, 384, 385]
+#endif
 
 julianFromDays :: TotalDays -> (Years, Julian)
 julianFromDays td = uncurry helper $ approx td where
@@ -335,8 +357,10 @@ julianFromDays td = uncurry helper $ approx td where
             rem' = Days $ td' - rh + 1
          in (minYears, rem')
 
+#if TEST
 prop_roshHashana_julianFromDays :: Years -> Bool
 prop_roshHashana_julianFromDays y = (y, 1) == julianFromDays (roshHashana y)
+#endif
 
 yearDef :: TotalDays -> TotalDays -> (YearLeap, YearType)
 yearDef a b = case b - a of
@@ -384,6 +408,7 @@ totalDaysFromHebrew (HebrewDate y m d) =
         ds = fromIntegral $ sum $ map ml [Tishrei ..m]
      in rh + ds + fromIntegral d - fromIntegral (ml m) - 1
 
+#if TEST
 prop_fromToHebrew :: Integer -> Bool
 prop_fromToHebrew d' =
     let d = ModifiedJulianDay d'
@@ -411,6 +436,7 @@ case_spotChecks = do
     fromGregorian 1984 9 27 @=? fromHebrew (HebrewDate 5745 Tishrei 1)
     fromGregorian 1985 1 12 @=? fromHebrew (HebrewDate 5745 Tevet 19)
     fromGregorian 1986 9 8 @=? fromHebrew (HebrewDate 5746 Elul 4)
+#endif
 
 clip :: HebrewDate -> HebrewDate
 clip (HebrewDate y m d) =
@@ -433,6 +459,7 @@ anniversaryInYear :: Int -- ^ year
                   -> HebrewDate
 anniversaryInYear y (HebrewDate _ m d) = clip $ HebrewDate y m d
 
+#if TEST
 caseAnniversaryInYear :: IO ()
 caseAnniversaryInYear = do
     -- Year 5770 is just the current year at time of writing
@@ -452,6 +479,7 @@ caseAnniversaryInYear = do
         anniversaryInYear 4 (HebrewDate 1 Adar2 1)
     HebrewDate 4 Adar 29 @=?
         anniversaryInYear 4 (HebrewDate 1 Adar1 30)
+#endif
 
 nextAnniversary :: HebrewDate -- ^ so to say current date
                 -> HebrewDate -- ^ date of event
@@ -460,6 +488,7 @@ nextAnniversary (HebrewDate cy cm cd) hd@(HebrewDate y m d)
     | cm > m || cm == m && cd > d = anniversaryInYear (cy + 1) hd
     | otherwise = anniversaryInYear cy hd
 
+#if TEST
 caseNextAnniversary :: IO ()
 caseNextAnniversary = do
     HebrewDate 5770 Tishrei 2 @=?
@@ -538,3 +567,4 @@ instance FromScalar Month Raw where
           Nothing -> fail $ "Invalid hebrew month: " ++ fromLazyByteString bs -- FIXME don't use fail
 instance FromObject Month Raw Raw where
     fromObject = fromScalar <=< getScalar
+#endif
