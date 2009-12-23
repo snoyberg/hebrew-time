@@ -1,7 +1,8 @@
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE DeriveDataTypeable #-}
+{-# LANGUAGE TypeSynonymInstances #-}
 {-# LANGUAGE CPP #-}
-{-# LANGUAGE OverloadedStrings #-}
 ---------------------------------------------------------
 --
 -- Module        : Data.Time.Calendar.Hebrew
@@ -34,11 +35,10 @@ import Control.Arrow
 import Control.Monad
 import Data.Time.Calendar (Day (..), fromGregorian)
 import Data.Time.Calendar.WeekDate (toWeekDate)
-import Data.Convertible
-
-import Data.Object
-import Data.Object.Text
-import Data.Object.Translate
+import Data.Typeable (Typeable)
+import Control.Exception (Exception)
+import qualified Safe.Failure as SF
+import Control.Failure
 
 #if TEST
 import Test.Framework (testGroup, Test)
@@ -47,6 +47,8 @@ import Test.Framework.Providers.QuickCheck (testProperty)
 import Test.HUnit hiding (Test)
 import Test.QuickCheck
 #endif
+
+import Data.Object
 
 ------ data definitions
 data Month = Tishrei | Cheshvan | Kislev | Tevet | Shevat
@@ -58,6 +60,7 @@ data YearType = Chaser | Ksidran | Shlema
 data YearLeap = Leap | NonLeap
     deriving (Eq, Ord, Show, Enum)
 
+{- FIXME use some translation package
 instance CanTranslate Month where
     tryTranslate x "en" = Just $ convertSuccess $ show x
     tryTranslate Tishrei "he" = Just "תשרי"
@@ -76,6 +79,7 @@ instance CanTranslate Month where
     tryTranslate Elul "he" = Just "אלול"
 
     defaultTranslate = convertSuccess . show
+-}
 
 ------ newtypes
 newtype Chalakim = Chalakim Integer
@@ -550,21 +554,13 @@ instance Arbitrary HebrewDate where
         y <- (+ 1) . (`mod` 6000) <$> arbitrary
         day <- (+ 1) . (`mod` 29) <$> arbitrary
         return $! HebrewDate y m day
-
------ Data.Object.Raw instances
-instance ToScalar Month Raw where
-    toScalar = toScalar . show
-instance ToObject Month Raw Raw where
-    toObject = Scalar . toScalar
-readM :: (Read r, Monad m) => String -> m r
-readM s = case reads s of
-            ((x, _):_) -> return x
-            _ -> fail $ "Unable to read: " ++ s
-instance FromScalar Month Raw where
-    fromScalar (Raw bs) =
-      case readM $ fromLazyByteString bs of
-          Just x -> return x
-          Nothing -> fail $ "Invalid hebrew month: " ++ fromLazyByteString bs -- FIXME don't use fail
-instance FromObject Month Raw Raw where
-    fromObject = fromScalar <=< getScalar
 #endif
+
+----- Data.Object.Text instances
+instance ConvertSuccess Month String where
+    convertSuccess = show
+instance ConvertAttempt String Month where
+    convertAttempt s = wrapFailure (\_ -> InvalidHebrewMonth s) $ SF.read s
+data InvalidHebrewMonth = InvalidHebrewMonth String
+    deriving (Show, Typeable)
+instance Exception InvalidHebrewMonth
