@@ -17,10 +17,13 @@
 --
 ---------------------------------------------------------
 module Data.Time.Calendar.Hebrew
-    ( HebrewDate (..)
+    ( -- * Data types
+      HebrewDate (..)
     , Month (..)
+      -- * Conversions
     , fromHebrew
     , toHebrew
+    , monthHebrew
       -- * Anniversaries
     , anniversaryInYear
     , nextAnniversary
@@ -30,17 +33,15 @@ module Data.Time.Calendar.Hebrew
 #endif
     ) where
 
-import Control.Applicative ((<$>))
-import Control.Arrow
-import Control.Monad
-import Data.Time.Calendar (Day (..), fromGregorian)
-import Data.Time.Calendar.WeekDate (toWeekDate)
 import Data.Typeable (Typeable)
-import Control.Exception (Exception)
-import qualified Safe.Failure as SF
-import Control.Failure
+import Data.Data (Data)
+import Control.Arrow
+import Data.Time.Calendar (Day (..))
 
 #if TEST
+import Control.Applicative ((<$>))
+import Data.Time.Calendar.WeekDate (toWeekDate)
+import Data.Time.Calendar (fromGregorian)
 import Test.Framework (testGroup, Test)
 import Test.Framework.Providers.HUnit
 import Test.Framework.Providers.QuickCheck (testProperty)
@@ -48,38 +49,31 @@ import Test.HUnit hiding (Test)
 import Test.QuickCheck
 #endif
 
-import Data.Object
-
 ------ data definitions
 data Month = Tishrei | Cheshvan | Kislev | Tevet | Shevat
            | Adar | Adar1 | Adar2
            | Nissan | Iyar | Sivan | Tammuz | Av | Elul
-    deriving (Eq, Ord, Show, Enum, Read)
+    deriving (Eq, Ord, Show, Enum, Read, Data, Typeable)
 data YearType = Chaser | Ksidran | Shlema
     deriving (Eq, Ord, Show, Enum)
 data YearLeap = Leap | NonLeap
     deriving (Eq, Ord, Show, Enum)
 
-{- FIXME use some translation package
-instance CanTranslate Month where
-    tryTranslate x "en" = Just $ convertSuccess $ show x
-    tryTranslate Tishrei "he" = Just "תשרי"
-    tryTranslate Cheshvan "he" = Just "חשון"
-    tryTranslate Kislev "he" = Just "כסלו"
-    tryTranslate Tevet "he" = Just "טבת"
-    tryTranslate Shevat "he" = Just "שבט"
-    tryTranslate Adar "he" = Just "אדר"
-    tryTranslate Adar1 "he" = Just "אדר א"
-    tryTranslate Adar2 "he" = Just "אדר ב"
-    tryTranslate Nissan "he" = Just "ניסן"
-    tryTranslate Iyar "he" = Just "אייר"
-    tryTranslate Sivan "he" = Just "סיון"
-    tryTranslate Tammuz "he" = Just "תמוז"
-    tryTranslate Av "he" = Just "אב"
-    tryTranslate Elul "he" = Just "אלול"
-
-    defaultTranslate = convertSuccess . show
--}
+monthHebrew :: Month -> String
+monthHebrew Tishrei = "תשרי"
+monthHebrew Cheshvan = "חשון"
+monthHebrew Kislev = "כסלו"
+monthHebrew Tevet = "טבת"
+monthHebrew Shevat = "שבט"
+monthHebrew Adar = "אדר"
+monthHebrew Adar1 = "אדר א"
+monthHebrew Adar2 = "אדר ב"
+monthHebrew Nissan = "ניסן"
+monthHebrew Iyar = "אייר"
+monthHebrew Sivan = "סיון"
+monthHebrew Tammuz = "תמוז"
+monthHebrew Av = "אב"
+monthHebrew Elul = "אלול"
 
 ------ newtypes
 newtype Chalakim = Chalakim Integer
@@ -173,6 +167,18 @@ isLeapYear y =
                 _ -> NonLeap
     in res
 
+monthsTilTishrei :: Years -> Months
+monthsTilTishrei (Years i) = Months $ (235 * i - 234) `div` 19
+
+#if TEST
+case_monthsTilTishrei :: Assertion
+case_monthsTilTishrei = do
+    0 @=? monthsTilTishrei 1
+    12 @=? monthsTilTishrei 2
+    24 @=? monthsTilTishrei 3
+    37 @=? monthsTilTishrei 4
+    235 @=? monthsTilTishrei 20
+
 extraMonthCount :: Years -> Months
 extraMonthCount i =
     case i of
@@ -197,24 +203,12 @@ extraMonthCount i =
         18 -> 6
         _ -> error $ "extraMonthCount: " ++ show i
 
-monthsTilTishrei :: Years -> Months
-monthsTilTishrei (Years i) = Months $ (235 * i - 234) `div` 19
-
 monthsTilTishreiLong :: Years -> Months
 monthsTilTishreiLong (Years y') =
     let (machzorim, y) = (y' - 1) `divMod` 19
         base = Months $ (y' - 1) * 12 + machzorim * 7
         extra = extraMonthCount $ Years y
      in base + extra
-
-#if TEST
-case_monthsTilTishrei :: Assertion
-case_monthsTilTishrei = do
-    0 @=? monthsTilTishrei 1
-    12 @=? monthsTilTishrei 2
-    24 @=? monthsTilTishrei 3
-    37 @=? monthsTilTishrei 4
-    235 @=? monthsTilTishrei 20
 
 prop_monthsTilTishrei :: Years -> Bool
 prop_monthsTilTishrei y = monthsTilTishrei y == monthsTilTishreiLong y
@@ -271,14 +265,6 @@ monthLength _ Chaser Kislev = 29
 monthLength _ _ Kislev = 30
 
 ------ conversion functions
-julianFromDate :: YearLeap -> YearType -> Month -> Date -> Julian
-julianFromDate yl yt m d =
-    let ml = monthLength yl yt
-        months = case m of
-            Tishrei -> []
-            _ -> enumFromTo Tishrei (pred m)
-     in d + sum (map ml months)
-
 dateFromJulian :: YearLeap -> YearType -> Julian -> (Month, Date)
 dateFromJulian yl yt j' =
     let ml = monthLength yl yt
@@ -291,6 +277,14 @@ dateFromJulian yl yt j' =
      in helper Tishrei j'
 
 #if TEST
+julianFromDate :: YearLeap -> YearType -> Month -> Date -> Julian
+julianFromDate yl yt m d =
+    let ml = monthLength yl yt
+        months = case m of
+            Tishrei -> []
+            _ -> enumFromTo Tishrei (pred m)
+     in d + sum (map ml months)
+
 prop_dateToFromJulian :: YearLeap -> YearType -> Julian -> Bool
 prop_dateToFromJulian yl yt j =
     j == uncurry (julianFromDate yl yt) (dateFromJulian yl yt j)
@@ -326,14 +320,12 @@ roshHashana y = daysFromWeeks w + d + dechiyot
 #if TEST
 case_firstRoshHashana :: Assertion
 case_firstRoshHashana = roshHashana 1 @?= 1
-#endif
 
 dayOfWeek :: TotalDays -> Weekday
 dayOfWeek t =
     let (_, w) = weeksFromDays t
      in w
 
-#if TEST
 prop_validRoshHashanaDay :: Years -> Bool
 prop_validRoshHashanaDay = (`elem` [1, 2, 4, 6]) . dayOfWeek . roshHashana
 #endif
@@ -382,7 +374,7 @@ data HebrewDate = HebrewDate
     , month :: Month
     , date :: Int
     }
-    deriving Eq
+    deriving (Eq, Data, Typeable)
 instance Show HebrewDate where
     show (HebrewDate y m d) = show d ++ " " ++ show m ++ ", " ++ show y
 
@@ -488,7 +480,7 @@ caseAnniversaryInYear = do
 nextAnniversary :: HebrewDate -- ^ so to say current date
                 -> HebrewDate -- ^ date of event
                 -> HebrewDate -- ^ first anniversary of event after current
-nextAnniversary (HebrewDate cy cm cd) hd@(HebrewDate y m d)
+nextAnniversary (HebrewDate cy cm cd) hd@(HebrewDate _y m d)
     | cm > m || cm == m && cd > d = anniversaryInYear (cy + 1) hd
     | otherwise = anniversaryInYear cy hd
 
@@ -555,12 +547,3 @@ instance Arbitrary HebrewDate where
         day <- (+ 1) . (`mod` 29) <$> arbitrary
         return $! HebrewDate y m day
 #endif
-
------ Data.Object.Text instances
-instance ConvertSuccess Month String where
-    convertSuccess = show
-instance ConvertAttempt String Month where
-    convertAttempt s = wrapFailure (\_ -> InvalidHebrewMonth s) $ SF.read s
-data InvalidHebrewMonth = InvalidHebrewMonth String
-    deriving (Show, Typeable)
-instance Exception InvalidHebrewMonth
