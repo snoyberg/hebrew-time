@@ -314,7 +314,7 @@ roshHashana y = daysFromWeeks w + d + dechiyot
             | isLeapYear (y - 1) == Leap &&
               d == 1 &&
               (s > 15 ||
-               s == 15 && c > 589) = 2
+               s == 15 && c > 589) = 1
             | otherwise = 0
 
 #if TEST
@@ -432,6 +432,10 @@ case_spotChecks = do
     fromGregorian 1984 9 27 @=? fromHebrew (HebrewDate 5745 Tishrei 1)
     fromGregorian 1985 1 12 @=? fromHebrew (HebrewDate 5745 Tevet 19)
     fromGregorian 1986 9 8 @=? fromHebrew (HebrewDate 5746 Elul 4)
+
+case_year3932 :: Assertion
+case_year3932 = do
+    2 @=? dayOfWeek (roshHashana 3932)
 #endif
 
 clip :: HebrewDate -> HebrewDate
@@ -513,6 +517,7 @@ testSuite = testGroup "Data.Time.Calendar.Hebrew"
     , testProperty "greg/hebrew same weekday" prop_sameWeekday
     , testCase "integral date spot check" case_integralSpotCheck
     , testCase "individual date spot checks" case_spotChecks
+    , testCase "year 3932" case_year3932
     , testCase "caseAnniversaryInYear" caseAnniversaryInYear
     , testCase "caseNextAnniversary" caseNextAnniversary
     ]
