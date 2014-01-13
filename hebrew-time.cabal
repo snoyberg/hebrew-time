@@ -1,6 +1,6 @@
 name:            hebrew-time
-version:         0.1.0.2
-license:         BSD3
+version:         0.1.1
+license:         MIT
 license-file:    LICENSE
 author:          Michael Snoyman <michael@snoyman.com>
 maintainer:      Michael Snoyman <michael@snoyman.com>
@@ -10,11 +10,7 @@ category:        Data
 stability:       stable
 cabal-version:   >= 1.2
 build-type:      Simple
-homepage:        http://github.com/snoyberg/hebrew-time/tree/master
-
-flag buildtests
-  description: Build the executable to run unit tests
-  default: False
+homepage:        https://github.com/snoyberg/hebrew-time
 
 library
     build-depends:   base >= 4 && < 5,
@@ -22,16 +18,17 @@ library
     exposed-modules: Data.Time.Calendar.Hebrew
     ghc-options:     -Wall
 
-executable           runtests
-    if flag(buildtests)
-        Buildable: True
-        cpp-options:     -DTEST
-        build-depends:   test-framework,
-                         test-framework-quickcheck2,
-                         test-framework-hunit,
-                         HUnit,
-                         QuickCheck >= 1 && < 2
-    else
-        Buildable: False
+test-suite runtests
+    type: exitcode-stdio-1.0
+    cpp-options:     -DTEST
+    build-depends:   test-framework,
+                     test-framework-quickcheck2,
+                     test-framework-hunit,
+                     HUnit,
+                     QuickCheck >= 2 && < 3
     ghc-options:     -Wall
     main-is:         runtests.hs
+
+source-repository head
+  type:     git
+  location: git://github.com/snoyberg/hebrew-time.git
