@@ -8,7 +8,7 @@ synopsis:        Hebrew dates and prayer times.
 description:     Conversion to and from Hebrew dates.
 category:        Data
 stability:       stable
-cabal-version:   >= 1.2
+cabal-version:   >= 1.10
 build-type:      Simple
 homepage:        https://github.com/snoyberg/hebrew-time
 
