@@ -491,6 +491,10 @@ caseNextAnniversary = do
         nextAnniversary (HebrewDate 5770 Tishrei 1) (HebrewDate 1 Tishrei 2)
     HebrewDate 5771 Tishrei 2 @=?
         nextAnniversary (HebrewDate 5770 Tishrei 3) (HebrewDate 1 Tishrei 2)
+    HebrewDate 5775 Adar 1 @=?
+        nextAnniversary (HebrewDate 5775 Tishrei 1) (HebrewDate 5774 Adar2 1)
+    HebrewDate 5775 Cheshvan 29 @=?
+        nextAnniversary (HebrewDate 5775 Tishrei 1) (HebrewDate 5774 Cheshvan 30)
 
 ------ testing
 testSuite :: Test
