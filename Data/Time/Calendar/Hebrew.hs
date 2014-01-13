@@ -44,7 +44,7 @@ import Data.Time.Calendar.WeekDate (toWeekDate)
 import Data.Time.Calendar (fromGregorian)
 import Test.Framework (testGroup, Test)
 import Test.Framework.Providers.HUnit
-import Test.Framework.Providers.QuickCheck (testProperty)
+import Test.Framework.Providers.QuickCheck2 (testProperty)
 import Test.HUnit hiding (Test)
 import Test.QuickCheck
 #endif
@@ -514,16 +514,13 @@ testSuite = testGroup "Data.Time.Calendar.Hebrew"
     ]
 
 instance Arbitrary Chalakim where
-    coarbitrary = undefined
     arbitrary = fromIntegral <$> (arbitrary :: Gen Int)
 
 instance Arbitrary Days where
-    coarbitrary = undefined
     arbitrary = fromIntegral . (+ 1) . (`mod` 353)
             <$> (arbitrary :: Gen Int)
 
 instance Arbitrary Years where
-    coarbitrary = undefined
     arbitrary = fromIntegral . (+ 1) . (`mod` 6000)
             <$> (arbitrary :: Gen Int)
 
@@ -531,15 +528,12 @@ enumAll :: Enum e => [e]
 enumAll = enumFrom $ toEnum 1
 
 instance Arbitrary YearLeap where
-    coarbitrary = undefined
     arbitrary = elements enumAll
 
 instance Arbitrary YearType where
-    coarbitrary = undefined
     arbitrary = elements enumAll
 
 instance Arbitrary HebrewDate where
-    coarbitrary = undefined
     arbitrary = do
         m <- elements [Tishrei, Cheshvan, Kislev, Tevet, Shevat,
                        Nissan, Iyar, Sivan, Tammuz, Av, Elul]

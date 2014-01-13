@@ -27,7 +27,7 @@ executable           runtests
         Buildable: True
         cpp-options:     -DTEST
         build-depends:   test-framework,
-                         test-framework-quickcheck,
+                         test-framework-quickcheck2,
                          test-framework-hunit,
                          HUnit,
                          QuickCheck >= 1 && < 2
