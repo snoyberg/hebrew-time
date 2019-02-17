@@ -1,3 +1,5 @@
 dist
 *.swp
 .stack-work/
+hebrew-time.cabal
+*~

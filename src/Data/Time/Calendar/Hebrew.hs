@@ -223,9 +223,9 @@ moladTishrei y = chalakimFromMonths (monthsTilTishrei y) + firstTishrei
 #if TEST
 case_moladTishrei :: Assertion
 case_moladTishrei = do
-    let testMolad w x y z = do
-        let (_, d, s, c) = splitChalakim $ moladTishrei w
-         in (w, d, s, c) @?= (w, x, y, z)
+    let testMolad w x y z =
+          let (_, d, s, c) = splitChalakim $ moladTishrei w
+           in (w, d, s, c) @?= (w, x, y, z)
     testMolad 5764 5 10 491
     testMolad 1 1 5 204
     testMolad 2 5 14 0
