@@ -1,5 +1,5 @@
 name:        hebrew-time
-version:     0.1.1
+version:     0.1.2
 synopsis:    Hebrew dates and prayer times.
 description: Conversion to and from Hebrew dates.
 category:    Data
@@ -7,6 +7,9 @@ author:      Michael Snoyman <michael@snoyman.com>
 maintainer:  Michael Snoyman <michael@snoyman.com>
 license:     MIT
 github:      snoyberg/hebrew-time
+extra-source-files:
+- README.md
+- ChangeLog.md
 
 dependencies:
 - base >= 4.9 && <5

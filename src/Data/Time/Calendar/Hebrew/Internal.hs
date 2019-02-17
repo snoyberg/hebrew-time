@@ -267,6 +267,20 @@ anniversaryInYear y (HebrewDate _ m d) = clip $ HebrewDate y m d
 nextAnniversary :: HebrewDate -- ^ so to say current date
                 -> HebrewDate -- ^ date of event
                 -> HebrewDate -- ^ first anniversary of event after current
-nextAnniversary (HebrewDate cy cm cd) hd@(HebrewDate _y m d)
-    | cm > m || cm == m && cd > d = anniversaryInYear (cy + 1) hd
-    | otherwise = anniversaryInYear cy hd
+nextAnniversary curr hd
+    | geHD thisYear curr = thisYear
+    | otherwise = nextYear
+  where
+    thisYear = anniversaryInYear (year curr) hd
+    nextYear = anniversaryInYear (year curr + 1) hd
+
+geHD :: HebrewDate -> HebrewDate -> Bool
+geHD (HebrewDate y1 m1 d1) (HebrewDate y2 m2 d2) =
+  case compare y1 y2 of
+    LT -> False
+    GT -> True
+    EQ ->
+      case compare m1 m2 of
+        LT -> False
+        GT -> True
+        EQ -> d1 >= d2

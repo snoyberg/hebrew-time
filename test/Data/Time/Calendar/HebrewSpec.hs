@@ -103,6 +103,16 @@ spec = do
         nextAnniversary (HebrewDate 5775 Tishrei 1) (HebrewDate 5774 Adar2 1)
     HebrewDate 5775 Cheshvan 29 `shouldBe`
         nextAnniversary (HebrewDate 5775 Tishrei 1) (HebrewDate 5774 Cheshvan 30)
+  prop "anniversary year works" $ \d (Years y') ->
+    let y = fromIntegral y'
+     in year (anniversaryInYear y d) `shouldBe` y
+  it "anniversary leap year examples" $ do
+    let today = toHebrew $ fromGregorian 2019 2 17
+        orig = toHebrew $ fromGregorian 1956 3 4
+        expected = anniversaryInYear 5779 orig
+        actual = nextAnniversary today orig
+    expected `shouldBe` HebrewDate 5779 Adar2 21
+    actual `shouldBe` expected
 
 uncurry4 :: (a -> b -> c -> d -> e) -> (a, b, c, d) -> e
 uncurry4 f (a, b, c, d) = f a b c d
